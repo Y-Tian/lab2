@@ -1,0 +1,339 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+
+entity LogicalStep_Lab2_top is port (
+   clkin_50			: in	std_logic;
+	pb					: in	std_logic_vector(3 downto 0);
+ 	sw   				: in  std_logic_vector(7 downto 0); -- The switch inputs
+   leds				: out std_logic_vector(7 downto 0); -- for displaying the switch content
+   seg7_data 		: out std_logic_vector(6 downto 0); -- 7-bit outputs to a 7-segment
+	seg7_char1  	: out	std_logic;				    		-- seg7 digit1 selector
+	seg7_char2  	: out	std_logic				    		-- seg7 digit2 selector
+	
+); 
+end LogicalStep_Lab2_top;
+
+architecture SimpleCircuit of LogicalStep_Lab2_top is
+--
+-- Components Used ---
+------------------------------------------------------------------- 
+  component SevenSegment port (
+   hex   		:  in  std_logic_vector(3 downto 0);   -- The 4 bit data to be displayed
+   sevenseg 	:  out std_logic_vector(6 downto 0)    -- 7-bit outputs to a 7-segment
+   ); 
+   end component;
+	
+  component segment7_mux port (
+	clk			: in std_logic := '0';
+	DIN2			: in std_logic_vector(6 downto 0);
+	DIN1			: in std_logic_vector(6 downto 0);
+	DOUT			: out std_logic_vector(6 downto 0);
+	DIG2			: out std_logic;
+	DIG1			: out std_logic
+  );
+  end component;
+  
+  component alu_and port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	ANDOUT		: out std_logic_vector(3 downto 0);
+  );
+  end component;
+  
+  component alu_or port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	OROUT			: out std_logic_vector(3 downto 0);
+  );
+  end component;
+ 
+  component alu_xor port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	XOROUT		: out std_logic_vector(3 downto 0);
+  );
+  end component;
+  
+  component alu_add port (
+   OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	ADDOUT		: out std_logic_vector(7 downto 0);
+  );
+  end component;
+	
+-------------------------------------------------------------------	
+	
+-- Create any signals, or temporary variables to be used
+--
+-- Note that there are two basic types and mixing them is difficult
+--  unsigned is a signal which can be used to perform math operations such as +, -, *
+--  std_logic_vector is a signal which can be used for logic operations such as OR, AND, NOT, XOR
+--
+	signal seg7_A		: std_logic_vector(6 downto 0);
+	signal hex_A		: std_logic_vector(3 downto 0);
+	
+	signal hex_B		: std_logic_vector(3 downto 0);
+	signal seg7_B		: std_logic_vector(6 downto 0);
+	
+	signal pb_bar		: std_logic_vector(3 downto 0);
+	
+	
+-- Here the circuit begins
+
+begin
+
+	pb_bar <= NOT(pb);
+
+	hex_A <= sw(3 downto 0);
+ --seg7_data <= seg7_A;
+ 
+	hex_B <= sw(7 downto 4);
+ 
+--COMPONENT HOOKUP
+--
+-- generate the seven segment coding
+
+	INST1: SevenSegment port map(hex_A, seg7_A);
+	INST2: SevenSegment port map(hex_B, seg7_B);
+	
+	INST3: segment7_mux port map(clkin_50, seg7_A, seg7_B, seg7_data, seg7_char2, seg7_char1);
+
+end SimpleCircuit;
+
+
+///
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_one_bit_adder port (
+	A				: in std_logic;
+	B				: in std_logic;
+	CIN			: in std_logic;
+	
+	SUM			: out std_logic;
+	COUT			: out std_logic;
+ );
+ end alu_one_bit_adder;
+ 
+ architecture Behavioural of alu_one_bit_adder is
+ 
+ begin
+ 
+ SUM <= (A XOR B) XOR CIN;
+ COUT <= ((A XOR B) AND CIN) OR (A AND B);
+ 
+ end architecture Behavioural
+ 
+ ///
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_two_bit_adder port (
+	A				: in std_logic_vector(1 downto 0);
+	B				: in std_logic_vector(1 downto 0);
+	CIN			: in std_logic;
+	
+	SUM			: out std_logic_vector(1 downto 0);
+	COUT			: out std_logic;
+ );
+ end alu_two_bit_adder;
+ 
+ architecture Behavioural of alu_two_bit_adder is
+ 
+ 
+  component alu_one_bit_adder port (
+   A				: in std_logic;
+	B				: in std_logic;
+	CIN			: in std_logic;
+	
+	SUM			: out std_logic;
+	COUT			: out std_logic;
+  );
+  end component;
+  
+  signal sum0 : std_logic;
+  signal sum1 : std_logic;
+  
+  signal cout0 : std_logic;
+  signal cout1 : std_logic;
+ 
+ begin
+ 
+ SUM <= sum1&sum0;
+ COUT <= cout1;
+
+ INST1: alu_one_bit_adder(A(0), B(0), 0, sum0, cout0);
+ INST2: alu_one_bit_adder(A(1), B(1), cout0, sum1, cout1);
+ 
+ end architecture Behavioural
+ 
+ ///
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_four_bit_adder port (
+	A				: in std_logic_vector(3 downto 0);
+	B				: in std_logic_vector(3 downto 0);
+	CIN			: in std_logic;
+	
+	SUM			: out std_logic_vector(3 downto 0);
+	COUT			: out std_logic;
+ );
+ end alu_four_bit_adder;
+ 
+ architecture Behavioural of alu_four_bit_adder is
+ 
+ 
+  component alu_two_bit_adder port (
+	A				: in std_logic_vector(1 downto 0);
+	B				: in std_logic_vector(1 downto 0);
+	CIN			: in std_logic;
+	
+	SUM			: out std_logic_vector(1 downto 0);
+	COUT			: out std_logic;
+  );
+  end component;
+  
+  signal sum0 : std_logic_vector(1 downto 0);
+  signal sum1 : std_logic_vector(1 downto 0);
+  
+  signal cout0 : std_logic;
+  signal cout1 : std_logic;
+ 
+ begin
+ 
+ SUM <= sum1&sum0;
+ COUT <= cout1;
+
+ INST1: alu_two_bit_adder(A(0), B(0), 0, sum0, cout0);
+ INST2: alu_two_bit_adder(A(1), B(1), cout0, sum1, cout1);
+ 
+ end architecture Behavioural
+ 
+///
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_or port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	OROUT			: out std_logic_vector(3 downto 0);
+ );
+ end alu_or;
+ 
+ architecture Behavioural of alu_or is
+ 
+ begin
+ 
+ OROUT <= OPIN1 OR OPIN2;
+ 
+ end architecture Behavioural
+ 
+ ///
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_xor port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	XOROUT		: out std_logic_vector(3 downto 0);
+ );
+ end alu_xor;
+ 
+ architecture Behavioural of alu_xor is
+ 
+ begin
+ 
+ XOROUT <= OPIN1 OR OPIN2;
+ 
+ end architecture Behavioural
+ 
+ ///
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu_and port (
+	OPIN1			: in std_logic_vector(3 downto 0);
+	OPIN2			: in std_logic_vector(3 downto 0);
+	
+	ANDOUT		: out std_logic_vector(3 downto 0);
+ );
+ end alu_and;
+ 
+ architecture Behavioural of alu_and is
+ 
+ begin
+ 
+ ANDOUT <= OPIN1 AND OPIN2;
+ 
+ end architecture Behavioural
+ 
+ ///
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-------------------------------------------------------------------------
+-- 7-segment display driver. It displays a 4-bit number on a 7-segment
+-- This is created as an entity so that it can be reused many times easily
+--
+
+entity SevenSegment is port (
+   
+   hex	   :  in  std_logic_vector(3 downto 0);   -- The 4 bit data to be displayed
+   
+   sevenseg :  out std_logic_vector(6 downto 0)    -- 7-bit outputs to a 7-segment
+); 
+end SevenSegment;
+
+architecture Behavioral of SevenSegment is
+
+-- 
+-- The following statements convert a 4-bit input, called dataIn to a pattern of 7 bits
+-- The segment turns on when it is '1' otherwise '0'
+--
+begin
+   with hex select				--GFEDCBA        3210      -- data in   
+	sevenseg 				    <= "0111111" when "0000",    -- [0]
+										 "0000110" when "0001",    -- [1]
+										 "1011011" when "0010",    -- [2]      +---- a -----+
+										 "1001111" when "0011",    -- [3]      |            |
+										 "1100110" when "0100",    -- [4]      |            |
+										 "1101101" when "0101",    -- [5]      f            b
+										 "1111101" when "0110",    -- [6]      |            |
+										 "0000111" when "0111",    -- [7]      |            |
+										 "1111111" when "1000",    -- [8]      +---- g -----+
+										 "1101111" when "1001",    -- [9]      |            |
+										 "1110111" when "1010",    -- [A]      |            |
+										 "1111100" when "1011",    -- [b]      e            c
+										 "1011000" when "1100",    -- [c]      |            |
+										 "1011110" when "1101",    -- [d]      |            |
+										 "1111001" when "1110",    -- [E]      +---- d -----+
+										 "1110001" when "1111",    -- [F]
+										 "0000000" when others;    -- [ ]
+end architecture Behavioral; 
+----------------------------------------------------------------------
